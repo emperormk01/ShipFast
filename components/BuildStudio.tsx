@@ -4,9 +4,8 @@ import { ScaffolderResponse, Project, BuildLog } from '../types';
 import { COMPONENTS } from './ComponentRegistry';
 
 interface BuildStudioProps {
-  isOpen: boolean;
-  onClose: () => void;
   initialTab?: 'architect' | 'library' | 'deployments';
+  onExit: () => void;
 }
 
 const MOCK_PROJECTS: Project[] = [
@@ -14,13 +13,12 @@ const MOCK_PROJECTS: Project[] = [
   { id: '2', name: 'SaaS Dashboard Pro', stack: 'React 19, Prisma, PostgreSQL', status: 'idle', lastDeployed: 'Yesterday' }
 ];
 
-const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab = 'architect' }) => {
+const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onExit }) => {
   const [activeTab, setActiveTab] = useState<'architect' | 'library' | 'deployments'>(initialTab);
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<ScaffolderResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
 
   // Deployment & Project State
   const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS);
@@ -35,34 +33,17 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      console.log(`[Studio] Modal opened on tab: ${initialTab}`);
-      setIsVisible(true);
-      setActiveTab(initialTab);
-    } else {
-      const timer = setTimeout(() => setIsVisible(false), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, initialTab]);
-
-  useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [buildLogs]);
 
-  if (!isVisible && !isOpen) return null;
-
   const generateSchema = async () => {
-    if (!prompt.trim()) {
-      console.warn("[Studio] Attempted to generate schema with empty prompt");
-      return;
-    }
+    if (!prompt.trim()) return;
 
-    console.log(`[Studio] Initiating scaffolding request. Prompt: "${prompt.substring(0, 50)}..."`);
+    console.log(`[Studio] AI Architect processing prompt...`);
     setIsLoading(true);
     setError(null);
     
     try {
-      const startTime = Date.now();
       const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,18 +51,12 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("[Studio] Scaffolding request failed:", errorData);
-        throw new Error(errorData.error || `Server responded with ${response.status}`);
+        throw new Error(`Server error: ${response.status}`);
       }
       
       const parsed: ScaffolderResponse = await response.json();
-      const duration = Date.now() - startTime;
-      console.log(`[Studio] Scaffolding successful! Duration: ${duration}ms`, parsed);
-      
       setResult(parsed);
       
-      // Auto-add to projects
       const newProject: Project = {
         id: Math.random().toString(36).substr(2, 9),
         name: parsed.projectName,
@@ -90,34 +65,30 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
         lastDeployed: null,
         scaffold: parsed
       };
-      console.log("[Studio] Adding new project to workspace:", newProject.name);
       setProjects(prev => [newProject, ...prev]);
+      setPrompt('');
+      console.log(`[Studio] Project "${parsed.projectName}" scaffolded successfully.`);
     } catch (err: any) {
-      console.error("[Studio] Error in generateSchema sequence:", err);
-      setError(err.message || "Failed to generate scaffold. Please try again.");
+      console.error("[Studio] Architect error:", err);
+      setError(err.message || "Failed to generate scaffold.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const simulateDeployment = (projectId: string) => {
-    const project = projects.find(p => p.id === projectId);
-    console.log(`[Studio] Starting simulated deployment for project: ${project?.name} (${projectId})`);
-    
     setIsDeploying(true);
     setBuildLogs([]);
     setActiveProjectId(projectId);
     
     const messages = [
-      { msg: 'Initializing build environment...', type: 'info' },
-      { msg: 'Cloning repository into temporary container...', type: 'info' },
-      { msg: 'Installing dependencies via pnpm...', type: 'info' },
-      { msg: 'Running type checking...', type: 'info' },
-      { msg: 'Compiling production build...', type: 'info' },
-      { msg: 'Optimizing assets and images...', type: 'warning' },
-      { msg: 'Generating static pages...', type: 'info' },
-      { msg: 'Exporting artifacts to edge network...', type: 'info' },
-      { msg: 'Deployment successful! 🎉', type: 'success' },
+      { msg: 'Initializing edge deployment sequence...', type: 'info' },
+      { msg: 'Resolving dependency tree...', type: 'info' },
+      { msg: 'Optimizing Next.js build artifacts...', type: 'info' },
+      { msg: 'Injecting environment variables...', type: 'warning' },
+      { msg: 'Uploading to global CDN...', type: 'info' },
+      { msg: 'Provisioning PostgreSQL instance...', type: 'info' },
+      { msg: 'Deployment successful! 🎉 Live at your-domain.shipfast.app', type: 'success' },
     ];
 
     let i = 0;
@@ -129,11 +100,9 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
           message: messages[i].msg,
           type: messages[i].type as any
         };
-        console.log(`[BuildLog] ${log.message}`);
         setBuildLogs(prev => [...prev, log]);
         i++;
       } else {
-        console.log("[Studio] Simulated deployment cycle complete.");
         clearInterval(interval);
         setIsDeploying(false);
         setProjects(prev => prev.map(p => 
@@ -144,7 +113,6 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
   };
 
   const handleCopy = (text: string) => {
-    console.log("[Studio] Copying code to clipboard...");
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -153,320 +121,337 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
   const selectedComp = COMPONENTS.find(c => c.id === selectedCompId) || COMPONENTS[0];
 
   return (
-    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-      <div className="absolute inset-0 bg-white/60 backdrop-blur-xl" onClick={onClose} />
-      
-      <div className={`relative w-full max-w-6xl h-[90vh] bg-white border border-slate-200 rounded-[2.5rem] shadow-[0_32px_128px_-12px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col transition-all duration-500 transform ${isOpen ? 'translate-y-0 scale-100' : 'translate-y-8 scale-95'}`}>
-        
-        {/* Header & Tabs */}
-        <div className="border-b border-slate-100 bg-white/50 sticky top-0 z-20">
-          <div className="flex items-center justify-between px-8 pt-6 pb-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center shadow-lg">
-                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-black tracking-tight">ShipFast Studio</h2>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Command Center</p>
-              </div>
+    <div className="flex h-screen w-full bg-[#FCFCFD] overflow-hidden animate-in fade-in duration-500">
+      {/* SIDEBAR NAVIGATION */}
+      <aside className="w-72 bg-white border-r border-slate-200 flex flex-col">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={onExit}>
+            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
             </div>
-            <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-black transition-all">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
+            <span className="font-bold text-black tracking-tight">Studio</span>
           </div>
-
-          <div className="flex px-8 gap-8 mt-2">
-            {[
-              { id: 'architect', label: 'AI Architect' },
-              { id: 'library', label: 'UI Library' },
-              { id: 'deployments', label: 'Deployments' }
-            ].map(tab => (
-              <button 
-                key={tab.id}
-                onClick={() => {
-                  console.log(`[Studio] Switching to tab: ${tab.id}`);
-                  setActiveTab(tab.id as any);
-                }}
-                className={`pb-4 text-sm font-bold transition-all relative ${activeTab === tab.id ? 'text-black' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                {tab.label}
-                {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-1 bg-black rounded-t-full" />}
-              </button>
-            ))}
-          </div>
+          <button onClick={onExit} className="text-slate-400 hover:text-black transition-colors">
+             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" /></svg>
+          </button>
         </div>
 
-        {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto bg-white">
-          {activeTab === 'architect' ? (
-            <div className="p-8 md:p-12">
-              {error && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  {error}
-                </div>
-              )}
+        <nav className="flex-1 p-4 space-y-1">
+          <h4 className="px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 mt-2">Tools</h4>
+          {[
+            { id: 'architect', label: 'AI Architect', icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' },
+            { id: 'library', label: 'UI Library', icon: 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z' },
+            { id: 'deployments', label: 'Deployments', icon: 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                activeTab === tab.id ? 'bg-black text-white shadow-lg shadow-slate-200' : 'text-slate-500 hover:bg-slate-50 hover:text-black'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={tab.icon} />
+              </svg>
+              {tab.label}
+            </button>
+          ))}
 
-              {!result && !isLoading ? (
-                <div className="max-w-2xl mx-auto py-12 text-center">
-                  <h3 className="text-3xl font-bold text-black mb-4">Architect your SaaS</h3>
-                  <p className="text-slate-500 mb-12">Describe your idea. Our AI engine will scaffold the entire foundation.</p>
-                  <div className="relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-slate-200 to-slate-300 rounded-3xl blur opacity-20 group-focus-within:opacity-100 transition duration-500"></div>
-                    <div className="relative bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-                      <textarea
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="e.g. A marketplace for high-end mechanical keyboard switches with user profiles, reviews, and Stripe integration..."
-                        className="w-full h-40 p-8 text-xl focus:outline-none resize-none placeholder:text-slate-200"
-                      />
-                      <div className="flex items-center justify-between px-8 py-6 bg-slate-50/50 border-t border-slate-100">
-                        <button onClick={generateSchema} disabled={!prompt.trim()} className={`px-10 py-4 rounded-2xl font-bold text-lg transition-all shadow-xl ${!prompt.trim() ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-black text-white hover:bg-slate-800 active:scale-95 shadow-slate-200'}`}>
-                          Generate & Projectize
-                        </button>
-                      </div>
+          <h4 className="px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 mt-8">Recent Projects</h4>
+          {projects.map(p => (
+            <button
+              key={p.id}
+              onClick={() => { setActiveTab('deployments'); setActiveProjectId(p.id); }}
+              className="w-full text-left px-3 py-2 text-xs font-medium text-slate-500 hover:text-black truncate transition-colors"
+            >
+              {p.name}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-6 bg-slate-50 border-t border-slate-100">
+           <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-slate-200"></div>
+              <div className="flex-1">
+                 <p className="text-xs font-bold text-black">Builder Mode</p>
+                 <p className="text-[10px] text-slate-400">Pro Plan Active</p>
+              </div>
+           </div>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 flex flex-col relative overflow-hidden">
+        {/* HEADER BAR */}
+        <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-8 shrink-0">
+          <div className="flex items-center gap-4">
+            <h2 className="text-sm font-bold text-black uppercase tracking-wider">
+              {activeTab === 'architect' ? 'Project Architect' : activeTab === 'library' ? 'UI Component Library' : 'Ship Workflow'}
+            </h2>
+            {isLoading && (
+              <div className="flex items-center gap-2 px-2 py-1 bg-slate-100 rounded text-[10px] text-slate-500 font-bold animate-pulse">
+                <div className="w-2 h-2 rounded-full bg-black animate-spin"></div>
+                AI PROCESSING
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="p-2 text-slate-400 hover:text-black transition-colors"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg></button>
+            <button className="p-2 text-slate-400 hover:text-black transition-colors"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></button>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-8 lg:p-12 relative">
+          <div className="max-w-5xl mx-auto h-full">
+            {activeTab === 'architect' ? (
+              <div className="space-y-12">
+                {!result && !isLoading ? (
+                  <div className="flex flex-col items-center justify-center min-h-[50vh] text-center max-w-2xl mx-auto space-y-6">
+                    <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shadow-sm">
+                       <svg className="w-8 h-8 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
                     </div>
-                  </div>
-                </div>
-              ) : isLoading ? (
-                <div className="flex flex-col items-center justify-center py-24">
-                  <div className="relative w-20 h-20 mb-8">
-                    <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
-                    <div className="absolute inset-0 border-4 border-black rounded-full border-t-transparent animate-spin"></div>
-                  </div>
-                  <h3 className="text-2xl font-bold text-black mb-2 animate-pulse">Generating your Blueprint...</h3>
-                </div>
-              ) : (
-                <div className="space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
-                      <h3 className="text-4xl font-extrabold text-black tracking-tight">{result?.projectName}</h3>
-                      <p className="text-slate-500 mt-2">Saved to your projects list</p>
-                    </div>
-                    <div className="flex gap-4">
-                      <button onClick={() => {
-                        console.log("[Studio] Resetting architect view");
-                        setResult(null); 
-                        setPrompt('');
-                      }} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all text-sm">Start Over</button>
-                      <button onClick={() => setActiveTab('deployments')} className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-slate-800 transition-all text-sm flex items-center gap-2 shadow-lg shadow-slate-200">
-                        Deploy Infrastructure
-                      </button>
+                      <h3 className="text-3xl font-extrabold text-black mb-3">What are we shipping?</h3>
+                      <p className="text-slate-500">Describe your application concept below. ShipFast will generate the complete architectural blueprint including database models and API routes.</p>
                     </div>
                   </div>
-
-                  <div className="grid lg:grid-cols-2 gap-12">
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-bold text-black uppercase tracking-widest">Database Model</span>
+                ) : result ? (
+                  <div className="animate-in slide-in-from-bottom-8 duration-700 space-y-12 pb-32">
+                    <div className="flex items-center justify-between">
+                      <div>
+                         <h1 className="text-4xl font-extrabold text-black tracking-tight">{result.projectName}</h1>
+                         <p className="text-slate-500 mt-1">Foundation Architecture Generated</p>
                       </div>
-                      <div className="bg-slate-900 rounded-2xl p-8 font-mono text-xs text-slate-300 overflow-x-auto border border-slate-800 shadow-inner group relative">
-                         <pre><code>{result?.databaseSchema}</code></pre>
+                      <div className="flex gap-3">
+                        <button onClick={() => setResult(null)} className="px-5 py-2.5 bg-white border border-slate-200 text-sm font-bold rounded-xl hover:bg-slate-50 transition-colors">Reset</button>
+                        <button onClick={() => setActiveTab('deployments')} className="px-5 py-2.5 bg-black text-white text-sm font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">Initialize Deployment</button>
                       </div>
                     </div>
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-bold text-black uppercase tracking-widest">API Infrastructure</span>
-                      </div>
-                      <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden shadow-sm">
-                        {result?.apiRoutes.map((route, idx) => (
-                          <div key={idx} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors group">
-                            <span className={`text-[10px] font-black px-2 py-1 rounded border ${route.method === 'GET' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-green-50 text-green-600 border-green-100'}`}>{route.method}</span>
-                            <span className="text-sm font-mono font-semibold text-black">{route.path}</span>
-                            <span className="text-xs text-slate-400">{route.description}</span>
+
+                    <div className="grid lg:grid-cols-2 gap-8">
+                       <div className="space-y-4">
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">PostgreSQL DDL</h4>
+                          <div className="bg-slate-900 rounded-3xl p-8 font-mono text-[11px] text-slate-300 border border-slate-800 shadow-2xl overflow-x-auto min-h-[300px]">
+                             <pre className="leading-relaxed whitespace-pre-wrap"><code>{result.databaseSchema}</code></pre>
                           </div>
-                        ))}
-                      </div>
+                       </div>
+                       <div className="space-y-4">
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Infrastructure Map</h4>
+                          <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm divide-y divide-slate-100">
+                             {result.apiRoutes.map((route, idx) => (
+                               <div key={idx} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                 <div className="flex items-center gap-3">
+                                   <span className={`text-[9px] font-black px-2 py-0.5 rounded border ${route.method === 'GET' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-green-50 text-green-600 border-green-100'}`}>{route.method}</span>
+                                   <span className="text-sm font-mono font-bold text-black">{route.path}</span>
+                                 </div>
+                                 <span className="text-xs text-slate-400">{route.description}</span>
+                               </div>
+                             ))}
+                          </div>
+                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ) : activeTab === 'library' ? (
-            <div className="flex h-full min-h-[60vh] bg-slate-50">
-              <aside className="w-64 bg-white border-r border-slate-200 overflow-y-auto p-6 space-y-1">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Categories</h4>
-                {COMPONENTS.map((comp) => (
-                  <button
-                    key={comp.id}
-                    onClick={() => {
-                      console.log(`[Library] Selected component: ${comp.name}`);
-                      setSelectedCompId(comp.id);
-                    }}
-                    className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${selectedCompId === comp.id ? 'bg-black text-white shadow-lg shadow-slate-200' : 'text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    {comp.name}
-                  </button>
-                ))}
-              </aside>
-              <main className="flex-1 p-12 overflow-y-auto bg-white">
-                <div className="max-w-3xl">
-                  <header className="mb-8">
-                    <span className="px-2 py-1 bg-slate-100 text-[10px] font-black uppercase text-slate-500 rounded border border-slate-200 mb-4 inline-block">{selectedComp.category}</span>
-                    <h1 className="text-3xl font-extrabold text-black mb-2">{selectedComp.name}</h1>
-                    <p className="text-slate-500 text-sm">{selectedComp.description}</p>
-                  </header>
-
-                  <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xl mb-8">
-                    <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 bg-slate-50/50">
-                      <div className="flex p-1 bg-slate-200 rounded-lg">
-                        <button onClick={() => setRegistryMode('preview')} className={`px-4 py-1 text-[10px] font-bold rounded-md transition-all ${registryMode === 'preview' ? 'bg-white text-black shadow-sm' : 'text-slate-500'}`}>Preview</button>
-                        <button onClick={() => setRegistryMode('code')} className={`px-4 py-1 text-[10px] font-bold rounded-md transition-all ${registryMode === 'code' ? 'bg-white text-black shadow-sm' : 'text-slate-500'}`}>Code</button>
-                      </div>
-                      <button onClick={() => handleCopy(selectedComp.code)} className="flex items-center gap-2 px-4 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-black hover:text-black">
-                        {copied ? 'Copied!' : 'Copy Code'}
-                      </button>
-                    </div>
-                    <div className="min-h-[300px] flex items-center justify-center p-12 bg-grid-slate-50">
-                      {registryMode === 'preview' ? selectedComp.preview : (
-                        <div className="w-full bg-slate-900 rounded-xl p-6 font-mono text-xs text-slate-300 overflow-x-auto">
-                          <pre><code>{selectedComp.code}</code></pre>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </main>
-            </div>
-          ) : (
-            /* Deployments & Workflow Tab */
-            <div className="p-8 md:p-12 space-y-12">
-              <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                <div>
-                  <h3 className="text-3xl font-bold text-black tracking-tight">Deployment Workflow</h3>
-                  <p className="text-slate-500 mt-1">Connect your providers and ship your boilerplates to the edge.</p>
-                </div>
-                <div className="flex gap-3">
-                   <button onClick={() => console.log("[Studio] Connect Vercel clicked")} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-black hover:bg-slate-50 transition-all shadow-sm">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M24 22.525H0l12-21.05 12 21.05z"/></svg>
-                      Connect Vercel
-                   </button>
-                   <button onClick={() => console.log("[Studio] Connect Netlify clicked")} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-black hover:bg-slate-50 transition-all shadow-sm">
-                      <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L0 12l1.4 1.4L12 2.8l10.6 10.6L24 12zM0 12l12 12 12-12-1.4-1.4L12 21.2 1.4 9.8z"/></svg>
-                      Connect Netlify
-                   </button>
-                </div>
-              </header>
-
-              <div className="grid lg:grid-cols-3 gap-8">
-                {/* Project List */}
-                <div className="lg:col-span-1 space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Your Projects</h4>
-                  {projects.map(proj => (
-                    <button 
-                      key={proj.id}
-                      onClick={() => {
-                        console.log(`[Deployments] Focusing project: ${proj.name}`);
-                        setActiveProjectId(proj.id); 
-                        setBuildLogs([]);
-                      }}
-                      className={`w-full text-left p-4 rounded-2xl border transition-all ${activeProjectId === proj.id ? 'border-black bg-slate-50 shadow-md' : 'border-slate-100 hover:border-slate-300 bg-white'}`}
+                ) : isLoading && (
+                   <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-6">
+                      <div className="w-12 h-12 border-4 border-slate-100 border-t-black rounded-full animate-spin"></div>
+                      <p className="text-sm font-bold text-black animate-pulse uppercase tracking-widest">Architecting your SaaS...</p>
+                   </div>
+                )}
+              </div>
+            ) : activeTab === 'library' ? (
+              <div className="flex flex-col lg:flex-row gap-12 h-full">
+                <aside className="lg:w-64 space-y-2 shrink-0">
+                  <h4 className="px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Categories</h4>
+                  {COMPONENTS.map((comp) => (
+                    <button
+                      key={comp.id}
+                      onClick={() => setSelectedCompId(comp.id)}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                        selectedCompId === comp.id ? 'bg-black text-white shadow-lg' : 'text-slate-500 hover:bg-slate-100'
+                      }`}
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-bold text-black">{proj.name}</span>
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${proj.status === 'live' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-slate-50 text-slate-400 border-slate-200'}`}>
-                          {proj.status}
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-slate-400 truncate">{proj.stack}</div>
-                      <div className="mt-4 text-[10px] text-slate-500 flex items-center justify-between">
-                        <span>Last Deployed: {proj.lastDeployed || 'Never'}</span>
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                      </div>
+                      {comp.name}
                     </button>
                   ))}
-                  <button onClick={() => setActiveTab('architect')} className="w-full p-4 rounded-2xl border border-dashed border-slate-200 text-slate-400 text-sm font-medium hover:text-black hover:border-slate-400 transition-all">
-                    + Generate New Project
-                  </button>
-                </div>
+                </aside>
+                <div className="flex-1 space-y-8">
+                   <header>
+                      <span className="px-2 py-1 bg-slate-100 text-[10px] font-black uppercase text-slate-500 rounded border border-slate-200 mb-4 inline-block">{selectedComp.category}</span>
+                      <h2 className="text-3xl font-extrabold text-black mb-2">{selectedComp.name}</h2>
+                      <p className="text-slate-500 text-sm leading-relaxed max-w-xl">{selectedComp.description}</p>
+                   </header>
 
-                {/* Dashboard & Logs */}
-                <div className="lg:col-span-2 space-y-6">
-                  {activeProjectId ? (
-                    <>
-                      <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
-                          <div>
-                            <h5 className="text-xl font-bold text-black">
-                              {projects.find(p => p.id === activeProjectId)?.name}
-                            </h5>
-                            <p className="text-sm text-slate-500">Live production environment</p>
+                   <div className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-2xl">
+                      <div className="flex items-center justify-between px-8 py-4 bg-slate-50/50 border-b border-slate-100">
+                        <div className="flex p-1 bg-slate-200 rounded-xl">
+                          <button onClick={() => setRegistryMode('preview')} className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${registryMode === 'preview' ? 'bg-white text-black shadow-sm' : 'text-slate-500 hover:text-black'}`}>Preview</button>
+                          <button onClick={() => setRegistryMode('code')} className={`px-4 py-1.5 text-[10px] font-bold rounded-lg transition-all ${registryMode === 'code' ? 'bg-white text-black shadow-sm' : 'text-slate-500 hover:text-black'}`}>Code</button>
+                        </div>
+                        <button onClick={() => handleCopy(selectedComp.code)} className="flex items-center gap-2 px-5 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black text-slate-600 hover:border-black hover:text-black transition-all">
+                           {copied ? 'COPIED TO CLIPBOARD' : 'COPY CODE'}
+                        </button>
+                      </div>
+                      <div className="min-h-[400px] flex items-center justify-center p-12 bg-grid-slate-50 relative">
+                        {registryMode === 'preview' ? (
+                          <div className="animate-in zoom-in duration-300">{selectedComp.preview}</div>
+                        ) : (
+                          <div className="w-full h-full bg-slate-900 rounded-2xl p-8 font-mono text-xs text-slate-300 overflow-x-auto shadow-inner">
+                            <pre><code>{selectedComp.code}</code></pre>
                           </div>
-                          <button 
-                            onClick={() => simulateDeployment(activeProjectId)}
-                            disabled={isDeploying}
-                            className={`px-8 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-lg ${isDeploying ? 'bg-slate-100 text-slate-400' : 'bg-black text-white hover:bg-slate-800 shadow-slate-200'}`}
-                          >
-                            {isDeploying ? (
-                              <>
-                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                Deploying...
-                              </>
-                            ) : 'Trigger Deployment'}
-                          </button>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          {[
-                            { label: 'Domains', value: '1 assigned' },
-                            { label: 'Environment', value: 'Production' },
-                            { label: 'Regions', value: 'Global (Edge)' },
-                            { label: 'Git Sync', value: 'Enabled' },
-                          ].map((stat, i) => (
-                            <div key={i} className="p-4 bg-slate-50 rounded-2xl">
-                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{stat.label}</div>
-                              <div className="text-xs font-bold text-black">{stat.value}</div>
-                            </div>
-                          ))}
-                        </div>
+                        )}
                       </div>
-
-                      <div className="bg-slate-900 rounded-3xl overflow-hidden shadow-2xl">
-                        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900/50">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-slate-700"></div>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Live Build Logs</span>
-                          </div>
-                          {isDeploying && <div className="text-[10px] text-blue-400 animate-pulse font-mono">STDOUT: STREAMING</div>}
-                        </div>
-                        <div className="h-64 p-6 font-mono text-xs overflow-y-auto space-y-1 scrollbar-hide">
-                          {buildLogs.length === 0 && !isDeploying && (
-                            <div className="text-slate-600 italic">No recent logs. Trigger a deployment to see real-time progress.</div>
-                          )}
-                          {buildLogs.map(log => (
-                            <div key={log.id} className="flex gap-4 group">
-                              <span className="text-slate-700 shrink-0">[{log.timestamp}]</span>
-                              <span className={`
-                                ${log.type === 'success' ? 'text-green-400' : ''}
-                                ${log.type === 'error' ? 'text-red-400 font-bold' : ''}
-                                ${log.type === 'warning' ? 'text-yellow-400' : ''}
-                                ${log.type === 'info' ? 'text-slate-300' : ''}
-                              `}>
-                                {log.message}
-                              </span>
-                            </div>
-                          ))}
-                          <div ref={logEndRef} />
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="h-full min-h-[400px] flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-3xl p-12 text-center">
-                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-300">
-                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                      </div>
-                      <h5 className="text-lg font-bold text-black mb-2">Select a project to manage</h5>
-                      <p className="text-sm text-slate-400 max-w-xs">View logs, manage domains, and ship code directly from your ShipFast projects.</p>
-                    </div>
-                  )}
+                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="space-y-12 pb-32">
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                  <div>
+                    <h3 className="text-3xl font-extrabold text-black tracking-tight">Deployments</h3>
+                    <p className="text-slate-500 mt-1">Manage infrastructure, domains, and edge deployments.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-black hover:bg-slate-50 transition-all shadow-sm">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M24 22.525H0l12-21.05 12 21.05z"/></svg>
+                      Connect Vercel
+                    </button>
+                    <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-black hover:bg-slate-50 transition-all shadow-sm">
+                      <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L0 12l1.4 1.4L12 2.8l10.6 10.6L24 12zM0 12l12 12 12-12-1.4-1.4L12 21.2 1.4 9.8z"/></svg>
+                      Connect Netlify
+                    </button>
+                  </div>
+                </header>
+
+                <div className="grid lg:grid-cols-3 gap-8">
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Project Workspace</h4>
+                    {projects.map(proj => (
+                      <button 
+                        key={proj.id}
+                        onClick={() => { setActiveProjectId(proj.id); setBuildLogs([]); }}
+                        className={`w-full text-left p-5 rounded-2xl border transition-all ${
+                          activeProjectId === proj.id ? 'border-black bg-white shadow-xl translate-x-1' : 'border-slate-100 hover:border-slate-300 bg-white'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <span className="font-bold text-black">{proj.name}</span>
+                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                            proj.status === 'live' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-slate-50 text-slate-400 border-slate-200'
+                          }`}>
+                            {proj.status}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono mb-4">{proj.stack}</div>
+                        <div className="text-[10px] text-slate-500 flex items-center justify-between pt-4 border-t border-slate-50">
+                          <span>Deployed: {proj.lastDeployed || 'N/A'}</span>
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="lg:col-span-2 space-y-6">
+                    {activeProjectId ? (
+                      <div className="animate-in fade-in slide-in-from-right-4 duration-500 space-y-6">
+                        <div className="bg-white border border-slate-200 rounded-[2rem] p-8 shadow-sm">
+                          <div className="flex justify-between items-center mb-10">
+                            <div>
+                               <h5 className="text-xl font-extrabold text-black">{projects.find(p => p.id === activeProjectId)?.name}</h5>
+                               <p className="text-sm text-slate-500">Production Control</p>
+                            </div>
+                            <button 
+                              onClick={() => simulateDeployment(activeProjectId)}
+                              disabled={isDeploying}
+                              className={`px-8 py-3 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-lg ${
+                                isDeploying ? 'bg-slate-100 text-slate-400' : 'bg-black text-white hover:bg-slate-800 shadow-slate-200'
+                              }`}
+                            >
+                              {isDeploying ? 'Deploying...' : 'Redeploy to Main'}
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            {[
+                              { l: 'Edge Runtime', v: 'Stable' },
+                              { l: 'Region', v: 'US-East-1' },
+                              { l: 'SSL', v: 'Active' },
+                              { l: 'Git Sync', v: 'Enabled' },
+                            ].map((s, i) => (
+                              <div key={i}>
+                                <div className="text-[9px] font-black text-slate-400 uppercase mb-1">{s.l}</div>
+                                <div className="text-xs font-bold text-black">{s.v}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-900 rounded-[2rem] overflow-hidden shadow-2xl">
+                          <div className="px-6 py-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
+                            <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase">Live Terminal Logs</span>
+                            {isDeploying && <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>}
+                          </div>
+                          <div className="h-72 p-8 font-mono text-[11px] overflow-y-auto space-y-1.5 scrollbar-hide">
+                            {buildLogs.map(log => (
+                              <div key={log.id} className="flex gap-4">
+                                <span className="text-slate-700">[{log.timestamp}]</span>
+                                <span className={
+                                  log.type === 'success' ? 'text-green-400' : 
+                                  log.type === 'error' ? 'text-red-400' : 
+                                  log.type === 'warning' ? 'text-yellow-400' : 'text-slate-400'
+                                }>
+                                  {log.message}
+                                </span>
+                              </div>
+                            ))}
+                            <div ref={logEndRef} />
+                            {buildLogs.length === 0 && !isDeploying && <div className="text-slate-700 italic">No active logs. Project idle.</div>}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="h-full min-h-[400px] flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-[2rem] p-12 text-center">
+                        <h5 className="text-lg font-bold text-black mb-2">Project Dashboard</h5>
+                        <p className="text-sm text-slate-400">Select a project from the workspace to manage its lifecycle.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+
+        {/* PERSISTENT AI CHAT INPUT (Only in Architect Mode) */}
+        {activeTab === 'architect' && (
+          <div className="absolute bottom-0 left-0 right-0 p-8 pointer-events-none">
+            <div className="max-w-4xl mx-auto pointer-events-auto">
+              <div className="relative group">
+                 <div className="absolute -inset-1 bg-gradient-to-r from-slate-200 to-slate-300 rounded-[2.5rem] blur opacity-20 group-focus-within:opacity-100 transition duration-700"></div>
+                 <div className="relative bg-white border border-slate-200 rounded-[2.5rem] p-3 pl-8 flex items-center shadow-2xl">
+                    <input 
+                       type="text" 
+                       value={prompt}
+                       onChange={(e) => setPrompt(e.target.value)}
+                       onKeyPress={(e) => e.key === 'Enter' && generateSchema()}
+                       placeholder="Tell me what you want to build..." 
+                       className="flex-1 bg-transparent border-none outline-none text-lg text-black placeholder:text-slate-300 py-4"
+                    />
+                    <button 
+                      onClick={generateSchema}
+                      disabled={isLoading || !prompt.trim()}
+                      className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                        isLoading || !prompt.trim() ? 'bg-slate-100 text-slate-400' : 'bg-black text-white hover:scale-105 active:scale-95'
+                      }`}
+                    >
+                       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                    </button>
+                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 };

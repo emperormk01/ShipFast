@@ -11,27 +11,37 @@ import FinalCTA from './components/FinalCTA';
 import Footer from './components/Footer';
 
 const App: React.FC = () => {
-  const [isStudioOpen, setIsStudioOpen] = useState(false);
+  const [view, setView] = useState<'landing' | 'studio'>('landing');
   const [studioInitialTab, setStudioInitialTab] = useState<'architect' | 'library' | 'deployments'>('architect');
 
   const openStudio = (tab: 'architect' | 'library' | 'deployments' = 'architect') => {
-    console.log(`[ShipFast] Opening Build Studio - Tab: ${tab}`);
+    console.log(`[ShipFast] Navigating to Build Studio - Tab: ${tab}`);
     setStudioInitialTab(tab);
-    setIsStudioOpen(true);
-    document.body.style.overflow = 'hidden';
+    setView('studio');
+    window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
   const closeStudio = () => {
-    console.log("[ShipFast] Closing Build Studio");
-    setIsStudioOpen(false);
-    document.body.style.overflow = 'unset';
+    console.log("[ShipFast] Returning to Landing Page");
+    setView('landing');
   };
+
+  if (view === 'studio') {
+    return (
+      <div className="min-h-screen bg-white selection:bg-black selection:text-white">
+        <BuildStudio 
+          initialTab={studioInitialTab} 
+          onExit={closeStudio} 
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen selection:bg-black selection:text-white bg-white">
       <Navbar onOpenStudio={openStudio} />
       
-      <main>
+      <main className="animate-in fade-in duration-700">
         <Hero onBookDemo={() => openStudio('architect')} />
         <Problem />
         <Solution />
@@ -41,13 +51,6 @@ const App: React.FC = () => {
       </main>
       
       <Footer />
-      
-      {/* Build Studio Modal Overlay */}
-      <BuildStudio 
-        isOpen={isStudioOpen} 
-        onClose={closeStudio} 
-        initialTab={studioInitialTab}
-      />
     </div>
   );
 };
