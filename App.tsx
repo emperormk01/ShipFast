@@ -12,15 +12,17 @@ import Footer from './components/Footer';
 
 const App: React.FC = () => {
   const [isStudioOpen, setIsStudioOpen] = useState(false);
-  const [studioInitialTab, setStudioInitialTab] = useState<'architect' | 'library'>('architect');
+  const [studioInitialTab, setStudioInitialTab] = useState<'architect' | 'library' | 'deployments'>('architect');
 
-  const openStudio = (tab: 'architect' | 'library' = 'architect') => {
+  const openStudio = (tab: 'architect' | 'library' | 'deployments' = 'architect') => {
+    console.log(`[ShipFast] Opening Build Studio - Tab: ${tab}`);
     setStudioInitialTab(tab);
     setIsStudioOpen(true);
     document.body.style.overflow = 'hidden';
   };
 
   const closeStudio = () => {
+    console.log("[ShipFast] Closing Build Studio");
     setIsStudioOpen(false);
     document.body.style.overflow = 'unset';
   };

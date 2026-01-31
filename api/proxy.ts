@@ -6,8 +6,11 @@ export const config = {
 };
 
 export default async function handler(req: any, res: any) {
+  console.log(`[API Proxy] Received request: ${req.method} ${req.url}`);
+
   // Security: Only allow POST requests
   if (req.method !== 'POST') {
+    console.warn(`[API Proxy] Method ${req.method} rejected.`);
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
@@ -15,12 +18,22 @@ export default async function handler(req: any, res: any) {
   const { prompt } = req.body;
 
   if (!prompt || typeof prompt !== 'string') {
+    console.error("[API Proxy] Validation Error: Missing or invalid prompt.");
     return res.status(400).json({ error: 'A valid project description prompt is required.' });
   }
 
+  console.log(`[API Proxy] Processing prompt of length ${prompt.length} chars.`);
+
   try {
-    // API Key is automatically injected from Vercel Environment Variables
+    if (!process.env.API_KEY) {
+      console.error("[API Proxy] Configuration Error: API_KEY is missing from environment.");
+      throw new Error("Server configuration error: API Key missing.");
+    }
+
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    console.log("[API Proxy] Calling Gemini model...");
+    const startTime = Date.now();
     
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -61,16 +74,23 @@ export default async function handler(req: any, res: any) {
       }
     });
 
+    const duration = Date.now() - startTime;
     const text = response.text;
+    
     if (!text) {
+      console.error("[API Proxy] Model returned an empty response.");
       throw new Error("The AI model failed to generate a response.");
     }
 
+    console.log(`[API Proxy] AI Response generated in ${duration}ms. Output length: ${text.length} chars.`);
+
     const result = JSON.parse(text.trim());
+    console.log(`[API Proxy] JSON parsing successful. Project: ${result.projectName}`);
+    
     return res.status(200).json(result);
 
   } catch (error: any) {
-    console.error("Scaffolding Engine Error:", error);
+    console.error("[API Proxy] Critical Scaffolding Engine Error:", error);
     
     // Provide user-friendly error messages based on failure type
     const statusCode = error.status || 500;

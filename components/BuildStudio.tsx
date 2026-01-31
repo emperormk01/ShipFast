@@ -36,6 +36,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
 
   useEffect(() => {
     if (isOpen) {
+      console.log(`[Studio] Modal opened on tab: ${initialTab}`);
       setIsVisible(true);
       setActiveTab(initialTab);
     } else {
@@ -51,20 +52,33 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
   if (!isVisible && !isOpen) return null;
 
   const generateSchema = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim()) {
+      console.warn("[Studio] Attempted to generate schema with empty prompt");
+      return;
+    }
+
+    console.log(`[Studio] Initiating scaffolding request. Prompt: "${prompt.substring(0, 50)}..."`);
     setIsLoading(true);
     setError(null);
+    
     try {
+      const startTime = Date.now();
       const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       });
+      
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("[Studio] Scaffolding request failed:", errorData);
         throw new Error(errorData.error || `Server responded with ${response.status}`);
       }
+      
       const parsed: ScaffolderResponse = await response.json();
+      const duration = Date.now() - startTime;
+      console.log(`[Studio] Scaffolding successful! Duration: ${duration}ms`, parsed);
+      
       setResult(parsed);
       
       // Auto-add to projects
@@ -76,8 +90,10 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
         lastDeployed: null,
         scaffold: parsed
       };
+      console.log("[Studio] Adding new project to workspace:", newProject.name);
       setProjects(prev => [newProject, ...prev]);
     } catch (err: any) {
+      console.error("[Studio] Error in generateSchema sequence:", err);
       setError(err.message || "Failed to generate scaffold. Please try again.");
     } finally {
       setIsLoading(false);
@@ -85,6 +101,9 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
   };
 
   const simulateDeployment = (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    console.log(`[Studio] Starting simulated deployment for project: ${project?.name} (${projectId})`);
+    
     setIsDeploying(true);
     setBuildLogs([]);
     setActiveProjectId(projectId);
@@ -110,9 +129,11 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
           message: messages[i].msg,
           type: messages[i].type as any
         };
+        console.log(`[BuildLog] ${log.message}`);
         setBuildLogs(prev => [...prev, log]);
         i++;
       } else {
+        console.log("[Studio] Simulated deployment cycle complete.");
         clearInterval(interval);
         setIsDeploying(false);
         setProjects(prev => prev.map(p => 
@@ -123,6 +144,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
   };
 
   const handleCopy = (text: string) => {
+    console.log("[Studio] Copying code to clipboard...");
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -163,7 +185,10 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
             ].map(tab => (
               <button 
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => {
+                  console.log(`[Studio] Switching to tab: ${tab.id}`);
+                  setActiveTab(tab.id as any);
+                }}
                 className={`pb-4 text-sm font-bold transition-all relative ${activeTab === tab.id ? 'text-black' : 'text-slate-400 hover:text-slate-600'}`}
               >
                 {tab.label}
@@ -221,7 +246,11 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
                       <p className="text-slate-500 mt-2">Saved to your projects list</p>
                     </div>
                     <div className="flex gap-4">
-                      <button onClick={() => {setResult(null); setPrompt('');}} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all text-sm">Start Over</button>
+                      <button onClick={() => {
+                        console.log("[Studio] Resetting architect view");
+                        setResult(null); 
+                        setPrompt('');
+                      }} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all text-sm">Start Over</button>
                       <button onClick={() => setActiveTab('deployments')} className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:bg-slate-800 transition-all text-sm flex items-center gap-2 shadow-lg shadow-slate-200">
                         Deploy Infrastructure
                       </button>
@@ -262,7 +291,10 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
                 {COMPONENTS.map((comp) => (
                   <button
                     key={comp.id}
-                    onClick={() => setSelectedCompId(comp.id)}
+                    onClick={() => {
+                      console.log(`[Library] Selected component: ${comp.name}`);
+                      setSelectedCompId(comp.id);
+                    }}
                     className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${selectedCompId === comp.id ? 'bg-black text-white shadow-lg shadow-slate-200' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     {comp.name}
@@ -307,11 +339,11 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
                   <p className="text-slate-500 mt-1">Connect your providers and ship your boilerplates to the edge.</p>
                 </div>
                 <div className="flex gap-3">
-                   <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-black hover:bg-slate-50 transition-all shadow-sm">
+                   <button onClick={() => console.log("[Studio] Connect Vercel clicked")} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-black hover:bg-slate-50 transition-all shadow-sm">
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M24 22.525H0l12-21.05 12 21.05z"/></svg>
                       Connect Vercel
                    </button>
-                   <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-black hover:bg-slate-50 transition-all shadow-sm">
+                   <button onClick={() => console.log("[Studio] Connect Netlify clicked")} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-black hover:bg-slate-50 transition-all shadow-sm">
                       <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L0 12l1.4 1.4L12 2.8l10.6 10.6L24 12zM0 12l12 12 12-12-1.4-1.4L12 21.2 1.4 9.8z"/></svg>
                       Connect Netlify
                    </button>
@@ -325,7 +357,11 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ isOpen, onClose, initialTab =
                   {projects.map(proj => (
                     <button 
                       key={proj.id}
-                      onClick={() => {setActiveProjectId(proj.id); setBuildLogs([]);}}
+                      onClick={() => {
+                        console.log(`[Deployments] Focusing project: ${proj.name}`);
+                        setActiveProjectId(proj.id); 
+                        setBuildLogs([]);
+                      }}
                       className={`w-full text-left p-4 rounded-2xl border transition-all ${activeProjectId === proj.id ? 'border-black bg-slate-50 shadow-md' : 'border-slate-100 hover:border-slate-300 bg-white'}`}
                     >
                       <div className="flex justify-between items-start mb-2">
