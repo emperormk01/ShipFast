@@ -33,3 +33,19 @@ export interface ScaffolderResponse {
   recommendedComponents: string[];
   deploymentSteps: string[];
 }
+
+export interface Project {
+  id: string;
+  name: string;
+  stack: string;
+  status: 'idle' | 'deploying' | 'live' | 'failed';
+  lastDeployed: string | null;
+  scaffold?: ScaffolderResponse;
+}
+
+export interface BuildLog {
+  id: string;
+  timestamp: string;
+  message: string;
+  type: 'info' | 'success' | 'error' | 'warning';
+}

@@ -12,8 +12,10 @@ import Footer from './components/Footer';
 
 const App: React.FC = () => {
   const [isStudioOpen, setIsStudioOpen] = useState(false);
+  const [studioInitialTab, setStudioInitialTab] = useState<'architect' | 'library'>('architect');
 
-  const openStudio = () => {
+  const openStudio = (tab: 'architect' | 'library' = 'architect') => {
+    setStudioInitialTab(tab);
     setIsStudioOpen(true);
     document.body.style.overflow = 'hidden';
   };
@@ -25,19 +27,25 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen selection:bg-black selection:text-white bg-white">
-      <Navbar onBookDemo={openStudio} />
+      <Navbar onOpenStudio={openStudio} />
+      
       <main>
-        <Hero onBookDemo={openStudio} />
+        <Hero onBookDemo={() => openStudio('architect')} />
         <Problem />
         <Solution />
         <SocialProof />
         <HowItWorks />
-        <FinalCTA onBookDemo={openStudio} />
+        <FinalCTA onBookDemo={() => openStudio('architect')} />
       </main>
+      
       <Footer />
       
       {/* Build Studio Modal Overlay */}
-      <BuildStudio isOpen={isStudioOpen} onClose={closeStudio} />
+      <BuildStudio 
+        isOpen={isStudioOpen} 
+        onClose={closeStudio} 
+        initialTab={studioInitialTab}
+      />
     </div>
   );
 };
