@@ -14,32 +14,40 @@ import { supabase } from './lib/supabase';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'landing' | 'studio' | 'auth'>('landing');
+  const [initializing, setInitializing] = useState(true);
   const [studioInitialTab, setStudioInitialTab] = useState<'architect' | 'library' | 'deployments'>('architect');
   const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session && view === 'auth') {
+    // Check current session on mount
+    const initAuth = async () => {
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
+      setSession(initialSession);
+      
+      if (initialSession) {
         setView('studio');
       }
-    });
+      setInitializing(false);
+    };
+
+    initAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       console.log(`[ShipFast] Auth Event: ${event}`);
-      setSession(session);
+      setSession(newSession);
       
-      if (session) {
-        if (view === 'auth') setView('studio');
+      if (newSession) {
+        // Automatically switch to studio if a session is established
+        setView('studio');
       } else {
-        if (view === 'studio') setView('landing');
+        // Return to landing if signed out
+        setView('landing');
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [view]);
+  }, []);
 
   const openStudio = (tab: 'architect' | 'library' | 'deployments' = 'architect') => {
     setStudioInitialTab(tab);
@@ -55,11 +63,20 @@ const App: React.FC = () => {
     setView('landing');
   };
 
+  // Prevent UI flicker while checking session
+  if (initializing) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-100 border-t-black rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   if (view === 'auth') {
     return <Auth onBack={() => setView('landing')} onSuccess={() => setView('studio')} />;
   }
 
-  if (view === 'studio') {
+  if (view === 'studio' && session) {
     return (
       <div className="min-h-screen bg-white selection:bg-black selection:text-white">
         <BuildStudio 
