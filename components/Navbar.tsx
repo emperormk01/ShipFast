@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 
 interface NavbarProps {
   onOpenStudio: (tab?: 'architect' | 'library') => void;
+  session: any;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onOpenStudio }) => {
+const Navbar: React.FC<NavbarProps> = ({ onOpenStudio, session }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -40,9 +41,9 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenStudio }) => {
 
         <button 
           onClick={() => onOpenStudio('architect')}
-          className="bg-black hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-all"
+          className="bg-black hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-lg"
         >
-          Launch Studio
+          {session ? 'Go to Studio' : 'Launch Studio'}
         </button>
       </div>
     </nav>
