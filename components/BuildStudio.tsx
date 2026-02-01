@@ -41,7 +41,6 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
   }, [buildLogs]);
 
   useEffect(() => {
-    // Auto-select first file when result appears
     if (result && result.fileSystem) {
       const paths = Object.keys(result.fileSystem);
       if (paths.length > 0) {
@@ -62,7 +61,13 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
       });
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       
-      const raw = await response.json();
+      const geminiResponse = await response.json();
+      
+      // Extract the text part from Gemini API raw response
+      const rawText = geminiResponse.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) throw new Error("Could not extract scaffold from AI response.");
+      
+      const raw = JSON.parse(rawText.trim());
       
       // Transform fileSystem from array of {path, content} to object mapping path -> content
       const vfs: Record<string, string> = {};
