@@ -182,15 +182,19 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
       {isProfileModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsProfileModalOpen(false)}></div>
-          <div className="relative w-full max-w-lg bg-white rounded-[3rem] shadow-2xl p-10 lg:p-12 overflow-hidden animate-in zoom-in-95 fade-in duration-300">
+          <div 
+            className="relative w-full max-w-lg bg-white rounded-[3rem] shadow-2xl p-10 lg:p-12 overflow-hidden animate-in zoom-in-95 fade-in duration-300 z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Decorative Background */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full -mr-32 -mt-32 blur-3xl opacity-50"></div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full -mr-32 -mt-32 blur-3xl opacity-50 -z-10"></div>
             
             <button 
               onClick={() => setIsProfileModalOpen(false)}
-              className="absolute top-8 right-8 p-2 rounded-full hover:bg-slate-50 transition-colors"
+              className="absolute top-8 right-8 p-3 rounded-full hover:bg-slate-50 transition-colors z-50 group"
+              aria-label="Close profile modal"
             >
-              <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-6 h-6 text-slate-400 group-hover:text-black transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>

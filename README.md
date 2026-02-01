@@ -1,20 +1,85 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# ShipFast
 
-# Run and deploy your AI Studio app
+A builder-focused platform that scaffolds full-stack SaaS projects from a text prompt. Describe your product, get a production-ready codebase with database schemas, API routes, auth, and Stripe integration - then deploy in one click.
 
-This contains everything you need to run your app locally.
+## What it does
 
-View your app in AI Studio: https://ai.studio/apps/drive/1eFwVV81QEdZykMrj52AvwGmwxR08L8cq
+**AI Scaffolder** - Describe your SaaS concept and ShipFast generates a complete project: Next.js 15 structure, Prisma/Drizzle database schemas, Zod validation, service layer, auth templates, and Stripe integration blocks. All returned as a virtual file system you can browse and copy.
 
-## Run Locally
+**Component Forge** - A library of pre-built, accessible UI components (buttons, cards, badges, inputs) styled with Tailwind. Preview live, copy the code, inject schemas directly into your scaffolded project.
 
-**Prerequisites:**  Node.js
+**Infrastructure** - Connect to GitHub, push to a repo, and deploy via Vercel with one click. Build logs stream in real time. Projects persist in Supabase with row-level security.
 
+## Tech stack
+
+- **Frontend:** React 19, Vite 6, TypeScript 5.8, Tailwind CSS
+- **Auth + DB:** Supabase (auth, project storage, RLS)
+- **AI:** Google Gemini API (gemini-3-flash-preview with gemini-2.5-flash fallback)
+- **Deploy:** Vercel (Edge Functions, Node.js 20.x)
+- **Language:** TypeScript throughout
+
+## Project structure
+
+```
+├── api/
+│   └── proxy.ts              # Gemini API proxy with key rotation + model fallback
+├── components/
+│   ├── Auth.tsx              # Supabase auth (login/signup)
+│   ├── BuildStudio.tsx       # Main workspace: scaffolder, component library, deployments
+│   ├── ComponentRegistry.tsx # Reusable UI component catalog
+│   ├── Hero.tsx              # Landing hero with animated code terminal
+│   ├── Problem.tsx           # Pain points section
+│   ├── Solution.tsx          # Benefits section
+│   ├── SocialProof.tsx       # Testimonials + animated counters
+│   ├── HowItWorks.tsx        # 3-step workflow
+│   ├── FinalCTA.tsx          # Closing call to action
+│   └── Footer.tsx            # Site footer
+├── lib/
+│   └── supabase.ts           # Supabase client init
+├── App.tsx                   # Root: routing between landing, auth, studio
+├── index.tsx                 # Entry point
+├── types.ts                  # TypeScript interfaces
+├── vercel.json               # Vercel rewrites (SPA + API routes)
+└── vite.config.ts            # Vite config
+```
+
+## Getting started
+
+**Prerequisites:** Node.js 18+
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   ```sh
+   npm install
+   ```
+
+2. Set environment variables (or use Vercel env):
+   - `API_KEY` - Comma-separated Gemini API keys for rotation
+   - Supabase config is hardcoded in `lib/supabase.ts`
+
+3. Run the dev server:
+   ```sh
+   npm run dev
+   ```
+
+4. Build for production:
+   ```sh
+   npm run build
+   ```
+
+## How the AI proxy works
+
+`api/proxy.ts` is an Edge Function that:
+
+- Accepts a prompt and forwards it to the Gemini API with a structured system instruction
+- Rotates through multiple API keys on 429/quota errors
+- Falls back across model versions (gemini-3-flash-preview → gemini-2.5-flash)
+- Rotates User-Agent headers to reduce rate-limit friction
+- Returns structured JSON: project name, database DDL, API routes, virtual file system, recommended components, and deployment steps
+
+## Deploy to Vercel
+
+```sh
+npx vercel
+```
+
+Or push to a GitHub repo connected to your Vercel project. The `vercel.json` handles SPA routing and API proxying automatically.
