@@ -38,18 +38,20 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
     const fetchInitialData = async () => {
       setIsSyncing(true);
       
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      setUser(authUser);
 
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .order('created_at', { ascending: false });
+      if (authUser) {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error("Supabase fetch error:", error);
-      } else if (data) {
-        setProjects(data as Project[]);
+        if (error) {
+          console.error("[Studio] Supabase fetch error:", error);
+        } else if (data) {
+          setProjects(data as Project[]);
+        }
       }
       setIsSyncing(false);
     };
@@ -76,7 +78,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
   };
 
   const generateSchema = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || !user) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -105,6 +107,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
       const { data, error: sbError } = await supabase
         .from('projects')
         .insert([{
+          user_id: user.id, // Critical for RLS
           name: parsed.projectName,
           stack: 'Next.js 15, Tailwind, Prisma',
           status: 'idle',
