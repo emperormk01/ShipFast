@@ -2,44 +2,33 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 export const config = {
-  maxDuration: 30, // Extend timeout for complex scaffolding tasks
+  maxDuration: 60, // Increased for full file system generation
 };
 
 export default async function handler(req: any, res: any) {
-  console.log(`[API Proxy] Received request: ${req.method} ${req.url}`);
-
-  // Security: Only allow POST requests
   if (req.method !== 'POST') {
-    console.warn(`[API Proxy] Method ${req.method} rejected.`);
-    res.setHeader('Allow', ['POST']);
-    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   const { prompt } = req.body;
-
-  if (!prompt || typeof prompt !== 'string') {
-    console.error("[API Proxy] Validation Error: Missing or invalid prompt.");
-    return res.status(400).json({ error: 'A valid project description prompt is required.' });
-  }
-
-  console.log(`[API Proxy] Processing prompt of length ${prompt.length} chars.`);
+  if (!prompt) return res.status(400).json({ error: 'Prompt is required.' });
 
   try {
-    if (!process.env.API_KEY) {
-      console.error("[API Proxy] Configuration Error: API_KEY is missing from environment.");
-      throw new Error("Server configuration error: API Key missing.");
-    }
-
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    console.log("[API Proxy] Calling Gemini model...");
-    const startTime = Date.now();
     
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `You are a world-class software architect. Generate a comprehensive SaaS project scaffold for: "${prompt}". 
-                 Return a JSON object containing a project name, PostgreSQL DDL schema, REST API route definitions, 
-                 and a list of essential UI components.`,
+      contents: `You are a world-class software architect. Generate a complete, production-ready SaaS project scaffold for: "${prompt}". 
+                 
+                 STRICT RULES:
+                 1. Create a Virtual File System (VFS) mapping file paths to their full source code content.
+                 2. Use Next.js 15, TypeScript, Tailwind CSS, and Prisma/Drizzle.
+                 3. Include Functional Core:
+                    - Zod schemas for all database models.
+                    - Service layer for CRUD operations.
+                    - Authentication templates (NextAuth/Clerk setup).
+                    - Integration blocks (Stripe utility, webhook handler, and email templates).
+                 4. Return a JSON object with: projectName, databaseSchema (DDL), apiRoutes, fileSystem (path -> content), recommendedComponents, and deploymentSteps.`,
       config: {
         temperature: 0.7,
         responseMimeType: "application/json",
@@ -47,7 +36,7 @@ export default async function handler(req: any, res: any) {
           type: Type.OBJECT,
           properties: {
             projectName: { type: Type.STRING },
-            databaseSchema: { type: Type.STRING, description: "Valid PostgreSQL SQL DDL statements including tables and relationships" },
+            databaseSchema: { type: Type.STRING, description: "PostgreSQL DDL" },
             apiRoutes: {
               type: Type.ARRAY,
               items: {
@@ -60,42 +49,27 @@ export default async function handler(req: any, res: any) {
                 required: ["path", "method", "description"]
               }
             },
-            recommendedComponents: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
+            fileSystem: {
+              type: Type.OBJECT,
+              description: "Mapping of file paths (e.g., 'lib/stripe.ts') to source code content.",
+              // We use an empty object schema as properties are dynamic
+              properties: {},
+              additionalProperties: { type: Type.STRING }
             },
-            deploymentSteps: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            }
+            recommendedComponents: { type: Type.ARRAY, items: { type: Type.STRING } },
+            deploymentSteps: { type: Type.ARRAY, items: { type: Type.STRING } }
           },
-          required: ["projectName", "databaseSchema", "apiRoutes", "recommendedComponents", "deploymentSteps"]
+          required: ["projectName", "databaseSchema", "apiRoutes", "fileSystem", "recommendedComponents", "deploymentSteps"]
         }
       }
     });
 
-    const duration = Date.now() - startTime;
     const text = response.text;
+    if (!text) throw new Error("Empty AI response.");
     
-    if (!text) {
-      console.error("[API Proxy] Model returned an empty response.");
-      throw new Error("The AI model failed to generate a response.");
-    }
-
-    console.log(`[API Proxy] AI Response generated in ${duration}ms. Output length: ${text.length} chars.`);
-
-    const result = JSON.parse(text.trim());
-    console.log(`[API Proxy] JSON parsing successful. Project: ${result.projectName}`);
-    
-    return res.status(200).json(result);
-
+    return res.status(200).json(JSON.parse(text.trim()));
   } catch (error: any) {
-    console.error("[API Proxy] Critical Scaffolding Engine Error:", error);
-    
-    // Provide user-friendly error messages based on failure type
-    const statusCode = error.status || 500;
-    const message = error.message || "The scaffolding engine encountered an error. Please try again.";
-    
-    return res.status(statusCode).json({ error: message });
+    console.error("[API Proxy Error]:", error);
+    return res.status(500).json({ error: error.message });
   }
 }

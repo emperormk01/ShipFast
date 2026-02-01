@@ -26,10 +26,15 @@ export interface APIRoute {
   description: string;
 }
 
+export interface FileSystem {
+  [path: string]: string;
+}
+
 export interface ScaffolderResponse {
   projectName: string;
   databaseSchema: string;
   apiRoutes: APIRoute[];
+  fileSystem: FileSystem;
   recommendedComponents: string[];
   deploymentSteps: string[];
 }
