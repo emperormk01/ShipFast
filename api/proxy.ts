@@ -2,7 +2,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 export const config = {
-  maxDuration: 60, // Increased for full file system generation
+  maxDuration: 60,
 };
 
 export default async function handler(req: any, res: any) {
@@ -21,14 +21,14 @@ export default async function handler(req: any, res: any) {
       contents: `You are a world-class software architect. Generate a complete, production-ready SaaS project scaffold for: "${prompt}". 
                  
                  STRICT RULES:
-                 1. Create a Virtual File System (VFS) mapping file paths to their full source code content.
+                 1. Create a Virtual File System (VFS) as an array of file objects.
                  2. Use Next.js 15, TypeScript, Tailwind CSS, and Prisma/Drizzle.
                  3. Include Functional Core:
                     - Zod schemas for all database models.
                     - Service layer for CRUD operations.
                     - Authentication templates (NextAuth/Clerk setup).
                     - Integration blocks (Stripe utility, webhook handler, and email templates).
-                 4. Return a JSON object with: projectName, databaseSchema (DDL), apiRoutes, fileSystem (path -> content), recommendedComponents, and deploymentSteps.`,
+                 4. Return a JSON object with: projectName, databaseSchema (DDL), apiRoutes, fileSystem (array of {path, content}), recommendedComponents, and deploymentSteps.`,
       config: {
         temperature: 0.7,
         responseMimeType: "application/json",
@@ -50,11 +50,16 @@ export default async function handler(req: any, res: any) {
               }
             },
             fileSystem: {
-              type: Type.OBJECT,
-              description: "Mapping of file paths (e.g., 'lib/stripe.ts') to source code content.",
-              // We use an empty object schema as properties are dynamic
-              properties: {},
-              additionalProperties: { type: Type.STRING }
+              type: Type.ARRAY,
+              description: "List of files to create.",
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  path: { type: Type.STRING, description: "Full file path, e.g. 'lib/stripe.ts'" },
+                  content: { type: Type.STRING, description: "Source code content" }
+                },
+                required: ["path", "content"]
+              }
             },
             recommendedComponents: { type: Type.ARRAY, items: { type: Type.STRING } },
             deploymentSteps: { type: Type.ARRAY, items: { type: Type.STRING } }

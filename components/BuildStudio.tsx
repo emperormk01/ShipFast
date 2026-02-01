@@ -43,8 +43,10 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
   useEffect(() => {
     // Auto-select first file when result appears
     if (result && result.fileSystem) {
-      const firstFile = Object.keys(result.fileSystem)[0];
-      setSelectedFilePath(firstFile);
+      const paths = Object.keys(result.fileSystem);
+      if (paths.length > 0) {
+        setSelectedFilePath(paths[0]);
+      }
     }
   }, [result]);
 
@@ -59,7 +61,22 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
         body: JSON.stringify({ prompt }),
       });
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
-      const parsed: ScaffolderResponse = await response.json();
+      
+      const raw = await response.json();
+      
+      // Transform fileSystem from array of {path, content} to object mapping path -> content
+      const vfs: Record<string, string> = {};
+      if (Array.isArray(raw.fileSystem)) {
+        raw.fileSystem.forEach((file: { path: string; content: string }) => {
+          vfs[file.path] = file.content;
+        });
+      }
+      
+      const parsed: ScaffolderResponse = {
+        ...raw,
+        fileSystem: vfs
+      };
+
       setResult(parsed);
       const newProject: Project = {
         id: Math.random().toString(36).substr(2, 9),
@@ -73,6 +90,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
       setPrompt('');
     } catch (err: any) {
       setError(err.message || "Failed to generate scaffold.");
+      console.error("[Studio] Error generating schema:", err);
     } finally {
       setIsLoading(false);
     }
@@ -177,7 +195,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
                   {/* Code Editor View */}
                   <div className="flex-1 flex flex-col bg-white">
                     <div className="px-6 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
-                      <span className="text-xs font-mono text-slate-400">{selectedFilePath}</span>
+                      <span className="text-xs font-mono text-slate-400 truncate max-w-[200px]">{selectedFilePath}</span>
                       <button onClick={() => fileContent && handleCopy(fileContent)} className="text-[10px] font-black text-slate-500 hover:text-black uppercase tracking-widest">
                         {copied ? 'Copied!' : 'Copy File'}
                       </button>
@@ -200,6 +218,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
                     <div className="max-w-xl space-y-6">
                        <h3 className="text-3xl lg:text-4xl font-extrabold text-black">Generate your SaaS core.</h3>
                        <p className="text-slate-500">Describe your product. We'll generate the database models, Zod validation, API services, and Stripe integration logic instantly.</p>
+                       {error && <p className="text-red-500 text-sm font-bold">{error}</p>}
                     </div>
                   )}
                 </div>
@@ -228,7 +247,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
                        <div className="p-12 bg-grid-slate-50 flex items-center justify-center min-h-[300px]">
                           {selectedComp.preview}
                        </div>
-                       <div className="bg-slate-900 p-8 font-mono text-[10px] text-slate-400">
+                       <div className="bg-slate-900 p-8 font-mono text-[10px] text-slate-400 overflow-x-auto">
                           <pre><code>{selectedComp.code}</code></pre>
                        </div>
                     </div>
@@ -259,13 +278,13 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
                        {activeProjectId ? (
                          <>
                            <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8">
-                              <div className="flex justify-between items-center mb-8">
+                              <div className="flex justify-between items-center mb-8 gap-4 flex-col sm:flex-row">
                                  <div><h5 className="text-xl font-extrabold text-black">Vercel Build Environment</h5><p className="text-sm text-slate-500">Production Node.js 20.x</p></div>
-                                 <button onClick={() => simulateDeployment(activeProjectId)} disabled={isDeploying} className="px-8 py-3 bg-black text-white font-bold rounded-xl shadow-lg hover:scale-105 transition-all">
+                                 <button onClick={() => simulateDeployment(activeProjectId)} disabled={isDeploying} className="px-8 py-3 bg-black text-white font-bold rounded-xl shadow-lg hover:scale-105 transition-all w-full sm:w-auto">
                                     {isDeploying ? 'Deploying...' : 'Promote to Production'}
                                  </button>
                               </div>
-                              <div className="grid grid-cols-4 gap-4">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                  {['Runtime: Edge', 'Region: Global', 'SSL: Auto', 'Logs: Live'].map((s, i) => (
                                    <div key={i} className="p-3 bg-slate-50 rounded-xl text-[10px] font-bold text-slate-600 text-center">{s}</div>
                                  ))}
@@ -284,7 +303,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
                               </div>
                            </div>
                          </>
-                       ) : <div className="h-full min-h-[300px] border-2 border-dashed border-slate-100 rounded-[2.5rem] flex items-center justify-center text-slate-400 font-medium">Select a project to manage infrastructure</div>}
+                       ) : <div className="h-full min-h-[300px] border-2 border-dashed border-slate-100 rounded-[2.5rem] flex items-center justify-center text-slate-400 font-medium p-8 text-center">Select a project to manage infrastructure</div>}
                     </div>
                  </div>
               </div>
@@ -294,13 +313,13 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
 
         {/* PERSISTENT AI CHAT INPUT (Only in Architect Mode) */}
         {activeTab === 'architect' && !result && !isLoading && (
-          <div className="absolute bottom-0 left-0 right-0 p-8 pointer-events-none z-50">
+          <div className="absolute bottom-0 left-0 right-0 p-4 lg:p-8 pointer-events-none z-50">
             <div className="max-w-4xl mx-auto pointer-events-auto">
               <div className="relative group">
-                 <div className="absolute -inset-1 bg-gradient-to-r from-slate-200 to-slate-300 rounded-[2.5rem] blur opacity-20 group-focus-within:opacity-100 transition duration-700"></div>
-                 <div className="relative bg-white border border-slate-200 rounded-[2.5rem] p-3 pl-8 flex items-center shadow-2xl">
-                    <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && generateSchema()} placeholder="Describe your SaaS concept (e.g. AI-powered legal document analyzer)..." className="flex-1 bg-transparent border-none outline-none text-lg text-black placeholder:text-slate-300 py-4" />
-                    <button onClick={generateSchema} disabled={isLoading || !prompt.trim()} className="w-14 h-14 rounded-full bg-black text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
+                 <div className="absolute -inset-1 bg-gradient-to-r from-slate-200 to-slate-300 rounded-2xl lg:rounded-[2.5rem] blur opacity-20 group-focus-within:opacity-100 transition duration-700"></div>
+                 <div className="relative bg-white border border-slate-200 rounded-2xl lg:rounded-[2.5rem] p-2 pl-6 lg:p-3 lg:pl-8 flex items-center shadow-2xl">
+                    <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && generateSchema()} placeholder="Describe your SaaS concept (e.g. AI legal analyzer)..." className="flex-1 bg-transparent border-none outline-none text-sm lg:text-lg text-black placeholder:text-slate-300 py-3 lg:py-4" />
+                    <button onClick={generateSchema} disabled={isLoading || !prompt.trim()} className="w-10 h-10 lg:w-14 lg:h-14 rounded-full bg-black text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all shrink-0">
                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                     </button>
                  </div>
