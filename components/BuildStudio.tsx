@@ -17,6 +17,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
   const [result, setResult] = useState<ScaffolderResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
 
   // VFS / Explorer State
@@ -177,6 +178,72 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
 
   return (
     <div className="flex h-screen w-full bg-[#FCFCFD] overflow-hidden animate-in fade-in duration-500">
+      {/* Profile Modal Overlay */}
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setIsProfileModalOpen(false)}></div>
+          <div className="relative w-full max-w-lg bg-white rounded-[3rem] shadow-2xl p-10 lg:p-12 overflow-hidden animate-in zoom-in-95 fade-in duration-300">
+            {/* Decorative Background */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full -mr-32 -mt-32 blur-3xl opacity-50"></div>
+            
+            <button 
+              onClick={() => setIsProfileModalOpen(false)}
+              className="absolute top-8 right-8 p-2 rounded-full hover:bg-slate-50 transition-colors"
+            >
+              <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-24 h-24 rounded-[2rem] bg-black p-1 shadow-2xl mb-6 flex items-center justify-center overflow-hidden">
+                {user?.user_metadata?.avatar_url ? (
+                  <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover rounded-[1.8rem]" />
+                ) : (
+                  <span className="text-3xl font-black text-white">{user?.email?.charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              
+              <h3 className="text-2xl font-black text-black tracking-tight mb-1">{user?.user_metadata?.full_name || 'Anonymous Builder'}</h3>
+              <p className="text-sm text-slate-400 font-medium mb-8">{user?.email}</p>
+
+              <div className="w-full space-y-4 mb-10">
+                <div className="p-6 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Current Plan</h4>
+                    <p className="text-sm font-bold text-black">ShipFast Professional</p>
+                  </div>
+                  <span className="px-3 py-1 bg-black text-white text-[10px] font-black rounded-lg uppercase">Active</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-5 rounded-3xl border border-slate-100 flex flex-col items-center justify-center text-center">
+                    <span className="text-xl font-black text-black mb-1">{projects.length}</span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Projects</span>
+                  </div>
+                  <div className="p-5 rounded-3xl border border-slate-100 flex flex-col items-center justify-center text-center">
+                    <span className="text-xl font-black text-black mb-1">∞</span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">AI Tokens</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-full flex flex-col gap-3">
+                <button className="w-full py-4 bg-slate-50 hover:bg-slate-100 text-black text-sm font-bold rounded-2xl transition-all">
+                  Billing Settings
+                </button>
+                <button 
+                  onClick={handleSignOut}
+                  className="w-full py-4 text-red-500 hover:text-red-600 text-sm font-bold rounded-2xl transition-all"
+                >
+                  Sign Out Account
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isSidebarOpen && <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
 
       <aside className={`fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 flex flex-col z-[70] transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -223,7 +290,10 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
         <div className="p-4 border-t border-slate-100 bg-slate-50/50">
           {user ? (
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-200 border border-slate-300 overflow-hidden flex-shrink-0">
+              <div 
+                onClick={() => setIsProfileModalOpen(true)}
+                className="w-10 h-10 rounded-full bg-slate-200 border border-slate-300 overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-black transition-all"
+              >
                 {user.user_metadata?.avatar_url ? (
                   <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -234,7 +304,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-black truncate">{user.user_metadata?.full_name || 'Builder'}</p>
-                <button onClick={handleSignOut} className="text-[10px] text-slate-500 hover:text-black transition-colors font-medium">Sign Out</button>
+                <button onClick={() => setIsProfileModalOpen(true)} className="text-[10px] text-slate-500 hover:text-black transition-colors font-medium">My Profile</button>
               </div>
             </div>
           ) : (
