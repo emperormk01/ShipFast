@@ -20,7 +20,7 @@ const USER_AGENTS = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0",
 ];
 
-const FALLBACK_MODELS = ["gemini-3-flash-preview", "gemini-2.5-flash"];
+const FALLBACK_MODELS = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
 
 function shuffle<T>(array: T[]): T[] {
   const newArr = [...array];
