@@ -16,7 +16,7 @@ A builder-focused platform that scaffolds full-stack SaaS projects from a text p
 
 - **Frontend:** React 19, Vite 6, TypeScript 5.8, Tailwind CSS
 - **Auth + DB:** Supabase (auth, project storage, RLS)
-- **AI:** Google Gemini API (gemini-3-flash-preview with gemini-2.5-flash fallback)
+- **AI:** Google Gemini API (gemini-3.5-flash-lite with gemini-3.1-flash-lite fallback)
 - **Deploy:** Vercel (Edge Functions, Node.js 20.x)
 - **Language:** TypeScript throughout
 
@@ -74,7 +74,7 @@ A builder-focused platform that scaffolds full-stack SaaS projects from a text p
 
 - Accepts a prompt and forwards it to the Gemini API with a structured system instruction
 - Rotates through multiple API keys on 429/quota errors
-- Falls back across model versions (gemini-3-flash-preview → gemini-2.5-flash)
+- Falls back across model versions (gemini-3.5-flash-lite → gemini-3.1-flash-lite)
 - Rotates User-Agent headers to reduce rate-limit friction
 - Returns structured JSON: project name, database DDL, API routes, virtual file system, recommended components, and deployment steps
 
