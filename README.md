@@ -1,6 +1,6 @@
 # ShipFast
 
-> **Live:** [https://shipfast.auxlo.xyz/](https://shipfast.auxlo.xyz/) — deployed on Cloudflare Workers
+> **Live:** [https://shipfast.auxlo.xyz/](https://shipfast.auxlo.xyz/)
 
 A builder-focused platform that scaffolds full-stack SaaS projects from a text prompt. Describe your product, get a production-ready codebase with database schemas, API routes, auth, and Stripe integration - then deploy in one click.
 
