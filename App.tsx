@@ -10,7 +10,7 @@ import HowItWorks from './components/HowItWorks';
 import FinalCTA from './components/FinalCTA';
 import Footer from './components/Footer';
 import Auth from './components/Auth';
-import { supabase } from './lib/supabase';
+import { me } from './lib/api';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'landing' | 'studio' | 'auth'>('landing');
@@ -19,34 +19,18 @@ const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
-    // Check current session on mount
+    // Check current session on mount (token in localStorage, verified server-side)
     const initAuth = async () => {
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
-      setSession(initialSession);
-      
-      if (initialSession) {
+      const user = await me();
+      setSession(user);
+
+      if (user) {
         setView('studio');
       }
       setInitializing(false);
     };
 
     initAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
-      console.log(`[ShipFast] Auth Event: ${event}`);
-      setSession(newSession);
-      
-      if (newSession) {
-        // Automatically switch to studio if a session is established
-        setView('studio');
-      } else {
-        // Return to landing if signed out
-        setView('landing');
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const openStudio = (tab: 'architect' | 'library' | 'deployments' = 'architect') => {
@@ -73,7 +57,11 @@ const App: React.FC = () => {
   }
 
   if (view === 'auth') {
-    return <Auth onBack={() => setView('landing')} onSuccess={() => setView('studio')} />;
+    return <Auth onBack={() => setView('landing')} onSuccess={async () => {
+      const user = await me();
+      setSession(user);
+      setView('studio');
+    }} />;
   }
 
   if (view === 'studio' && session) {

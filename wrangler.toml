@@ -11,6 +11,11 @@ not_found_handling = "single-page-application"
 [vars]
 ENVIRONMENT = "production"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "shipfast-db"
+database_id = "510f6126-d61f-41bd-bfaa-da7621a22ef7"
+
 routes = [
   { pattern = "shipfast.auxlo.xyz", custom_domain = true }
 ]

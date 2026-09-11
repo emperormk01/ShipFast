@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ScaffolderResponse, Project, BuildLog } from '../types';
 import { COMPONENTS } from './ComponentRegistry';
-import { supabase } from '../lib/supabase';
+import { me, logout, listProjects, createProject, updateProject } from '../lib/api';
 
 interface BuildStudioProps {
   initialTab?: 'architect' | 'library' | 'deployments';
@@ -34,24 +34,20 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
   const [selectedCompId, setSelectedCompId] = useState(COMPONENTS[0].id);
   const [copied, setCopied] = useState(false);
 
-  // Initial Load from Supabase
+  // Initial Load from the Cloudflare API (D1)
   useEffect(() => {
     const fetchInitialData = async () => {
       setIsSyncing(true);
-      
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+
+      const authUser = await me();
       setUser(authUser);
 
       if (authUser) {
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error("[Studio] Supabase fetch error:", error);
-        } else if (data) {
-          setProjects(data as Project[]);
+        try {
+          const rows = await listProjects();
+          setProjects(rows as Project[]);
+        } catch (err) {
+          console.error("[Studio] Projects fetch error:", err);
         }
       }
       setIsSyncing(false);
@@ -74,7 +70,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
   }, [result]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await logout();
     onExit();
   };
 
@@ -105,24 +101,15 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
       const parsed: ScaffolderResponse = { ...raw, fileSystem: vfs };
       setResult(parsed);
 
-      const { data, error: sbError } = await supabase
-        .from('projects')
-        .insert([{
-          user_id: user.id, // Critical for RLS
-          name: parsed.projectName,
-          stack: 'Next.js 15, Tailwind, Prisma',
-          status: 'idle',
-          scaffold: parsed
-        }])
-        .select()
-        .single();
+      const created = await createProject({
+        name: parsed.projectName,
+        stack: 'Next.js 15, Tailwind, Prisma',
+        status: 'idle',
+        scaffold: parsed,
+      });
 
-      if (sbError) throw sbError;
-
-      if (data) {
-        setProjects(prev => [data as Project, ...prev]);
-        setActiveProjectId(data.id);
-      }
+      setProjects(prev => [created as Project, ...prev]);
+      setActiveProjectId(created.id);
       setPrompt('');
     } catch (err: any) {
       setError(err.message || "Failed to generate scaffold.");
@@ -154,13 +141,11 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
       } else {
         clearInterval(interval);
         const now = new Date().toISOString();
-        const { error } = await supabase
-          .from('projects')
-          .update({ status: 'live', last_deployed: now })
-          .eq('id', projectId);
-
-        if (!error) {
+        try {
+          await updateProject(projectId, { status: 'live', lastDeployed: now });
           setProjects(prev => prev.map(p => p.id === projectId ? { ...p, status: 'live', lastDeployed: now } : p));
+        } catch (err) {
+          console.error("[Studio] Projects update error:", err);
         }
         setIsDeploying(false);
       }
@@ -201,14 +186,10 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
 
             <div className="relative z-10 flex flex-col items-center">
               <div className="w-24 h-24 rounded-[2rem] bg-black p-1 shadow-2xl mb-6 flex items-center justify-center overflow-hidden">
-                {user?.user_metadata?.avatar_url ? (
-                  <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover rounded-[1.8rem]" />
-                ) : (
-                  <span className="text-3xl font-black text-white">{user?.email?.charAt(0).toUpperCase()}</span>
-                )}
+                <span className="text-3xl font-black text-white">{user?.email?.charAt(0).toUpperCase()}</span>
               </div>
-              
-              <h3 className="text-2xl font-black text-black tracking-tight mb-1">{user?.user_metadata?.full_name || 'Anonymous Builder'}</h3>
+
+              <h3 className="text-2xl font-black text-black tracking-tight mb-1">{user?.name || 'Anonymous Builder'}</h3>
               <p className="text-sm text-slate-400 font-medium mb-8">{user?.email}</p>
 
               <div className="w-full space-y-4 mb-10">
@@ -294,20 +275,16 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
         <div className="p-4 border-t border-slate-100 bg-slate-50/50">
           {user ? (
             <div className="flex items-center gap-3">
-              <div 
+              <div
                 onClick={() => setIsProfileModalOpen(true)}
                 className="w-10 h-10 rounded-full bg-slate-200 border border-slate-300 overflow-hidden flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-black transition-all"
               >
-                {user.user_metadata?.avatar_url ? (
-                  <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs font-bold uppercase">
-                    {user.email?.charAt(0)}
-                  </div>
-                )}
+                <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs font-bold uppercase">
+                  {user.email?.charAt(0)}
+                </div>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-black truncate">{user.user_metadata?.full_name || 'Builder'}</p>
+                <p className="text-xs font-bold text-black truncate">{user.name || 'Builder'}</p>
                 <button onClick={() => setIsProfileModalOpen(true)} className="text-[10px] text-slate-500 hover:text-black transition-colors font-medium">My Profile</button>
               </div>
             </div>
