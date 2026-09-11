@@ -85,7 +85,7 @@ export interface ProjectRow {
   id: string;
   name: string;
   stack: string;
-  status: "idle" | "deploying" | "live" | "failed";
+  status: "draft" | "planned" | "exported";
   lastDeployed: string | null;
   scaffold?: any;
 }
@@ -106,6 +106,18 @@ export async function createProject(input: {
     body: JSON.stringify(input),
   });
   return data.project;
+}
+
+export interface GitHubSkill {
+  repo: string;
+  description: string;
+  stars: number;
+  url: string;
+}
+
+export async function getSkills(q: string): Promise<GitHubSkill[]> {
+  const data = await request<{ skills: GitHubSkill[] }>(`/api/skills?q=${encodeURIComponent(q)}`);
+  return data.skills;
 }
 
 export async function updateProject(

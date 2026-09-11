@@ -15,7 +15,7 @@ import { me } from './lib/api';
 const App: React.FC = () => {
   const [view, setView] = useState<'landing' | 'studio' | 'auth'>('landing');
   const [initializing, setInitializing] = useState(true);
-  const [studioInitialTab, setStudioInitialTab] = useState<'architect' | 'library' | 'deployments'>('architect');
+  const [studioInitialTab, setStudioInitialTab] = useState<'architect' | 'library' | 'handoff'>('architect');
   const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
@@ -33,7 +33,7 @@ const App: React.FC = () => {
     initAuth();
   }, []);
 
-  const openStudio = (tab: 'architect' | 'library' | 'deployments' = 'architect') => {
+  const openStudio = (tab: 'architect' | 'library' | 'handoff' = 'architect') => {
     setStudioInitialTab(tab);
     if (!session) {
       setView('auth');

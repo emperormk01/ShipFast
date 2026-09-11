@@ -34,6 +34,7 @@ interface Env {
   DB: D1Database;
   API_KEY?: string;
   GEMINI_API_KEY?: string;
+  GITHUB_TOKEN?: string;
   ENVIRONMENT?: string;
 }
 
@@ -82,21 +83,25 @@ async function handleProxy(req: Request, env: Env): Promise<Response> {
   let { prompt, contents, systemInstruction, tools, generationConfig, model: requestedModel, stream = false } = body;
 
   if (prompt && !contents) {
+    // Architecture planner mode: produce a handoff plan for a coding agent,
+    // NOT code. No file contents — file map only (paths + purpose). The user
+    // pastes each phase prompt into their own coding agent step by step.
+    const stack = typeof body.stack === "string" && body.stack.trim() ? body.stack.trim().slice(0, 200) : "Next.js 15, TypeScript, Tailwind CSS, Prisma";
+    const elements = Array.isArray(body.elements) ? body.elements.map((e: any) => String(e).slice(0, 120)).slice(0, 20) : [];
     contents = [
       {
         parts: [
           {
-            text: `You are a world-class software architect. Generate a complete, production-ready SaaS project scaffold for: "${prompt}".
+            text: `You are a world-class software architect. Write a full-scale architecture plan for: "${prompt}".
+Target stack: ${stack}.
+${elements.length ? `The user picked these UI elements to use: ${elements.join(", ")}. Reference them in the plan where they fit.` : ""}
 
-               STRICT RULES:
-               1. Create a Virtual File System (VFS) as an array of file objects.
-               2. Use Next.js 15, TypeScript, Tailwind CSS, and Prisma/Drizzle.
-               3. Include Functional Core:
-                  - Zod schemas for all database models.
-                  - Service layer for CRUD operations.
-                  - Authentication templates (NextAuth/Clerk setup).
-                  - Integration blocks (Stripe utility, webhook handler, and email templates).
-               4. Return a JSON object with: projectName, databaseSchema (DDL), apiRoutes, fileSystem (array of {path, content}), recommendedComponents, and deploymentSteps.`,
+STRICT RULES:
+1. Plan, do not code. Never output file contents — only a file map (path + purpose per file).
+2. Break the build into 4-7 ordered phases. Each phase gets a standalone COPY-PASTE PROMPT the user can feed to a coding agent, written so the agent can execute it without prior context (restate stack + what exists so far + exact deliverable + acceptance criteria).
+3. Include: data model (entities + key fields), API contract (method + path + purpose), UI elements to use, agent skills to look up on GitHub (skill name + why, as "owner/repo" guesses when confident, else topic keywords), risks/edge cases, and a launch checklist.
+4. Keep every prompt self-contained and concrete. No placeholders like "TODO" or "add more later".
+5. Return ONLY the JSON object described by the response schema.`,
           },
         ],
       },
@@ -108,34 +113,71 @@ async function handleProxy(req: Request, env: Env): Promise<Response> {
         type: "OBJECT",
         properties: {
           projectName: { type: "STRING" },
-          databaseSchema: { type: "STRING" },
-          apiRoutes: {
+          overview: { type: "STRING" },
+          stack: { type: "STRING" },
+          phases: {
             type: "ARRAY",
             items: {
               type: "OBJECT",
               properties: {
-                path: { type: "STRING" },
+                title: { type: "STRING" },
+                goal: { type: "STRING" },
+                prompt: { type: "STRING" },
+                files: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      path: { type: "STRING" },
+                      purpose: { type: "STRING" },
+                    },
+                    required: ["path", "purpose"],
+                  },
+                },
+                acceptance: { type: "ARRAY", items: { type: "STRING" } },
+              },
+              required: ["title", "goal", "prompt", "files", "acceptance"],
+            },
+          },
+          dataModel: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                entity: { type: "STRING" },
+                fields: { type: "STRING" },
+              },
+              required: ["entity", "fields"],
+            },
+          },
+          apiContract: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
                 method: { type: "STRING" },
-                description: { type: "STRING" },
+                path: { type: "STRING" },
+                purpose: { type: "STRING" },
               },
-              required: ["path", "method", "description"],
+              required: ["method", "path", "purpose"],
             },
           },
-          fileSystem: {
+          elements: { type: "ARRAY", items: { type: "STRING" } },
+          skills: {
             type: "ARRAY",
             items: {
               type: "OBJECT",
               properties: {
-                path: { type: "STRING" },
-                content: { type: "STRING" },
+                name: { type: "STRING" },
+                reason: { type: "STRING" },
               },
-              required: ["path", "content"],
+              required: ["name", "reason"],
             },
           },
-          recommendedComponents: { type: "ARRAY", items: { type: "STRING" } },
-          deploymentSteps: { type: "ARRAY", items: { type: "STRING" } },
+          risks: { type: "ARRAY", items: { type: "STRING" } },
+          launchChecklist: { type: "ARRAY", items: { type: "STRING" } },
         },
-        required: ["projectName", "databaseSchema", "apiRoutes", "fileSystem", "recommendedComponents", "deploymentSteps"],
+        required: ["projectName", "overview", "stack", "phases", "dataModel", "apiContract", "elements", "skills", "risks", "launchChecklist"],
       },
     };
   }
@@ -215,6 +257,43 @@ async function handleProxy(req: Request, env: Env): Promise<Response> {
     status: 500,
     headers: { ...corsHeaders(), "Content-Type": "application/json" },
   });
+}
+
+// ─── Agent skills lookup (GitHub search, curated fallback) ──────────────────
+
+const CURATED_SKILLS = [
+  {
+    repo: "anthropics/skills",
+    description: "Agent Skills open standard: reusable capabilities for coding agents.",
+    stars: 0,
+    url: "https://github.com/anthropics/skills",
+  },
+];
+
+async function handleSkills(url: URL, env: Env): Promise<Response> {
+  const q = (url.searchParams.get("q") || "").trim().slice(0, 120);
+  if (!q) return json({ skills: CURATED_SKILLS });
+  try {
+    const query = encodeURIComponent(`${q} agent skills in:name,description`);
+    const headers: Record<string, string> = {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "ShipFast-Planner",
+    };
+    if (env.GITHUB_TOKEN) headers["Authorization"] = `Bearer ${env.GITHUB_TOKEN}`;
+    const res = await fetch(`https://api.github.com/search/repositories?q=${query}&per_page=5&sort=stars`, { headers });
+    if (!res.ok) throw new Error(`GitHub ${res.status}`);
+    const data: any = await res.json();
+    const skills = ((data.items as any[]) || []).map((r) => ({
+      repo: r.full_name,
+      description: r.description || "",
+      stars: r.stargazers_count || 0,
+      url: r.html_url,
+    }));
+    return json({ skills: skills.length ? skills : CURATED_SKILLS });
+  } catch (err: any) {
+    console.warn("[Skills] GitHub search failed, using curated list:", err.message);
+    return json({ skills: CURATED_SKILLS });
+  }
 }
 
 // ─── Auth + Projects (D1, replaces Supabase) ────────────────────────────────
@@ -387,7 +466,7 @@ async function handleProjects(req: Request, env: Env, pathname: string): Promise
     }
     const name = String(body.name || "Untitled project").slice(0, 200);
     const stack = String(body.stack || "").slice(0, 200);
-    const status = ["idle", "deploying", "live", "failed"].includes(body.status) ? body.status : "idle";
+    const status = ["draft", "planned", "exported"].includes(body.status) ? body.status : "draft";
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     await env.DB.prepare(
@@ -420,7 +499,7 @@ async function handleProjects(req: Request, env: Env, pathname: string): Promise
         sets.push("stack = ?");
         params.push(String(body.stack).slice(0, 200));
       }
-      if (body.status !== undefined && ["idle", "deploying", "live", "failed"].includes(body.status)) {
+      if (body.status !== undefined && ["draft", "planned", "exported"].includes(body.status)) {
         sets.push("status = ?");
         params.push(body.status);
       }
@@ -465,6 +544,10 @@ export default {
 
     if (url.pathname === "/api/proxy") {
       return handleProxy(request, env);
+    }
+
+    if (url.pathname === "/api/skills" && request.method === "GET") {
+      return handleSkills(url, env);
     }
 
     if (url.pathname === "/api/auth/signup" && request.method === "POST") {
