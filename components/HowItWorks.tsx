@@ -5,18 +5,18 @@ import { Step } from '../types';
 const steps: Step[] = [
   {
     number: "01",
-    title: "Connect Your Idea",
-    description: "Start from a template or describe your project. We scaffold the database, auth, and API structure instantly."
+    title: "Describe Your Product",
+    description: "Tell us what you're building and pick your stack. No templates, no setup — just your idea in plain words."
   },
   {
     number: "02",
-    title: "Assemble Components",
-    description: "Drag, drop, or code using our modular component library. Fully typed, fully responsive, and accessible."
+    title: "Get the Phased Plan",
+    description: "Receive ordered phases with copy-paste prompts, a file map, data model, API contract, and UI elements to use."
   },
   {
     number: "03",
-    title: "Launch Everywhere",
-    description: "One-click deployment to global edge networks. Monitor performance and scale as you grow."
+    title: "Hand It to Your Agent",
+    description: "Paste each prompt into your coding agent in order, follow the launch checklist, and ship with confidence."
   }
 ];
 

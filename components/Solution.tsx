@@ -4,8 +4,8 @@ import { Benefit } from '../types';
 
 const benefits: Benefit[] = [
   {
-    title: "Ready-to-Ship Infrastructure",
-    description: "Launch with pre-configured auth, databases, and API routes. We handle the plumbing, you build the value.",
+    title: "Agent-Ready Architecture",
+    description: "Get phased prompts, file maps, and acceptance criteria your coding agent can execute without guessing.",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -13,8 +13,8 @@ const benefits: Benefit[] = [
     )
   },
   {
-    title: "Component Excellence",
-    description: "Access a library of 100+ high-quality, accessible UI components. Styled with Tailwind, optimized for performance.",
+    title: "Elements Picked for Your Plan",
+    description: "Choose UI elements from the library and they get baked into the plan, so your agent uses the right pieces.",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
@@ -22,8 +22,8 @@ const benefits: Benefit[] = [
     )
   },
   {
-    title: "Automated Deployments",
-    description: "Push to main and see it live. ShipFast automates your CI/CD pipeline so you never touch a YAML file again.",
+    title: "One-Doc Handoff",
+    description: "Export the full plan as a single markdown doc. Copy it or download it — your agent takes it from there.",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -31,8 +31,8 @@ const benefits: Benefit[] = [
     )
   },
   {
-    title: "AI-Powered Scaffolding",
-    description: "Describe your app, and ShipFast generates the base schema and UI. AI that works for you, not against you.",
+    title: "AI Planning, Not Code",
+    description: "Describe your app, and ShipFast drafts the blueprint — phases, prompts, and checklists. Plans, never code.",
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -76,10 +76,10 @@ const Solution: React.FC = () => {
             <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-xl border border-slate-200 shadow-xl z-20 hidden md:block">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-2 h-2 rounded-full bg-slate-400 animate-pulse"></div>
-                <span className="text-sm font-semibold text-slate-600">Build Success</span>
+                <span className="text-sm font-semibold text-slate-600">Plan Ready</span>
               </div>
               <div className="text-2xl font-bold text-black">4m 12s</div>
-              <div className="text-xs text-slate-400">Average time to launch</div>
+              <div className="text-xs text-slate-400">Average time to plan</div>
             </div>
           </div>
         </div>

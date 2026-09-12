@@ -3,15 +3,14 @@ import React, { useState, useEffect } from 'react';
 
 const CodeTerminal: React.FC = () => {
   const codeLines = [
-    { text: "import { DeployButton } from '@shipfast/ui';", indent: 0, color: "text-slate-500", highlight: [9, 23] },
-    { text: "// Initialize lightning fast workflow", indent: 0, color: "text-slate-400" },
-    { text: "const Project = () => {", indent: 0, color: "text-slate-500", highlight: [6, 13] },
-    { text: "return (", indent: 1, color: "text-black" },
-    { text: "<Dashboard>", indent: 2, color: "text-slate-500" },
-    { text: "<DeployButton status=\"live\" />", indent: 3, color: "text-black" },
-    { text: "</Dashboard>", indent: 2, color: "text-slate-500" },
-    { text: ");", indent: 1, color: "text-black" },
-    { text: "};", indent: 0, color: "text-slate-500" }
+    { text: "# Phase 1: Project setup", indent: 0, color: "text-slate-400" },
+    { text: "prompt: \"Scaffold Next.js 15 + Tailwind...\"", indent: 0, color: "text-slate-500", highlight: [9, 23] },
+    { text: "accept: [build passes, routes render]", indent: 0, color: "text-slate-500", highlight: [6, 13] },
+    { text: "# Phase 2: Data model", indent: 0, color: "text-slate-400" },
+    { text: "prompt: \"Add Prisma schema for User...\"", indent: 0, color: "text-black" },
+    { text: "files: [prisma/schema.prisma]", indent: 1, color: "text-slate-500" },
+    { text: "# Phase 3: Hand to your agent", indent: 0, color: "text-slate-400" },
+    { text: "copy, paste, ship.", indent: 0, color: "text-black" }
   ];
 
   const [visibleLines, setVisibleLines] = useState<number>(0);
@@ -80,26 +79,26 @@ const Hero: React.FC<HeroProps> = ({ onBookDemo }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs font-medium text-slate-600 mb-8">
           <span className="flex h-2 w-2 rounded-full bg-black animate-pulse"></span>
-          Now supporting Next.js 15
+          Works with any stack
         </div>
         
         <h1 className="text-5xl md:text-7xl font-extrabold text-black tracking-tight mb-6 leading-[1.1]">
-          Stop building boilerplate. <br className="hidden md:block" />
+          Start with the blueprint. <br className="hidden md:block" />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-black to-slate-400">
-            Start shipping products.
+            Ship with any agent.
           </span>
         </h1>
-        
+
         <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-600 mb-10 leading-relaxed">
-          ShipFast provides deployment-ready components and automated workflows to launch your next SaaS in hours, not weeks.
+          ShipFast turns your idea into a phased architecture plan with copy-paste prompts your coding agent can execute in hours, not weeks.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <button 
+          <button
             onClick={onBookDemo}
             className="w-full sm:w-auto px-8 py-4 bg-black hover:bg-slate-800 text-white rounded-xl font-bold text-lg transition-all shadow-lg shadow-slate-200"
           >
-            Book Your Demo
+            Start planning
           </button>
           <button className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-slate-50 text-black rounded-xl font-bold text-lg border border-slate-200 transition-all">
             See the Stack
@@ -113,7 +112,7 @@ const Hero: React.FC<HeroProps> = ({ onBookDemo }) => {
               <div className="w-3 h-3 rounded-full bg-slate-300"></div>
               <div className="w-3 h-3 rounded-full bg-slate-300"></div>
               <div className="w-3 h-3 rounded-full bg-slate-300"></div>
-              <div className="ml-4 text-xs text-slate-400 font-mono">shipfast-v1 / project / dashboard.tsx</div>
+              <div className="ml-4 text-xs text-slate-400 font-mono">shipfast-v1 / plan / phase-01.md</div>
             </div>
             <div className="p-4 md:p-8 flex flex-col md:flex-row gap-8 items-stretch">
               <CodeTerminal />

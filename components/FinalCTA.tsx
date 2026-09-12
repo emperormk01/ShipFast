@@ -17,16 +17,16 @@ const FinalCTA: React.FC<FinalCTAProps> = ({ onBookDemo }) => {
             Ready to reclaim <br /> your weekends?
           </h2>
           <p className="text-lg text-slate-600 mb-10 relative z-10 max-w-xl mx-auto">
-            Join 2,000+ indie hackers and teams shipping better products faster. 
-            No credit card required. No lock-in. Just code.
+            Join 2,000+ indie hackers and teams shipping better products faster.
+            No credit card required. No lock-in. Just plans.
           </p>
-          
+
           <div className="flex flex-col items-center gap-6 relative z-10">
-            <button 
+            <button
               onClick={onBookDemo}
               className="px-10 py-5 bg-black hover:bg-slate-800 text-white rounded-2xl font-bold text-xl transition-all shadow-xl shadow-slate-200 transform hover:-translate-y-1"
             >
-              Book Your Free Demo
+              Start planning
             </button>
             <p className="text-sm text-slate-500 flex items-center gap-2">
               <svg className="w-4 h-4 text-slate-400" fill="currentColor" viewBox="0 0 20 20">

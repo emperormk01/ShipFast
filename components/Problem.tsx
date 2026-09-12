@@ -33,8 +33,8 @@ const Problem: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-black mb-3">Messy Handoffs</h3>
-            <p className="text-slate-600">The gap between "Idea" and "Live URL" is filled with broken UI, inconsistent types, and deployment errors.</p>
+            <h3 className="text-xl font-bold text-black mb-3">Vague Agent Briefs</h3>
+            <p className="text-slate-600">Handing a bare idea to a coding agent gets guesses: wrong architecture, missing pieces, and context lost by phase two.</p>
           </div>
 
           <div className="p-8 rounded-2xl border border-slate-200 bg-white hover:border-slate-300 transition-colors shadow-sm">
