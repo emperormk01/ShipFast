@@ -83,7 +83,7 @@ const Hero: React.FC<HeroProps> = ({ onBookDemo }) => {
         </div>
         
         <h1 className="text-5xl md:text-7xl font-extrabold text-black tracking-tight mb-6 leading-[1.1]">
-          Start with the blueprint. <br className="hidden md:block" />
+          Plan once. <br className="hidden md:block" />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-black to-slate-400">
             Ship with any agent.
           </span>
