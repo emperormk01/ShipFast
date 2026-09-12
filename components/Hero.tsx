@@ -90,7 +90,7 @@ const Hero: React.FC<HeroProps> = ({ onBookDemo }) => {
         </h1>
 
         <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-600 mb-10 leading-relaxed">
-          ShipFast turns your idea into a phased architecture plan with copy-paste prompts your coding agent can execute in hours, not weeks.
+          Turn your idea into a complete implementation plan for Claude Code, Cursor, Codex, or any other coding agent.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
