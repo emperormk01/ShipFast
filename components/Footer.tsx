@@ -12,16 +12,9 @@ const Footer: React.FC = () => {
             <span className="text-lg font-bold text-black tracking-tight">ShipFast</span>
           </div>
           
-          <div className="flex gap-8 text-sm text-slate-500">
-            <a href="#" className="hover:text-black transition-colors">Twitter</a>
-            <a href="#" className="hover:text-black transition-colors">GitHub</a>
-            <a href="#" className="hover:text-black transition-colors">Discord</a>
-            <a href="#" className="hover:text-black transition-colors">Changelog</a>
-          </div>
-
-          <div className="text-sm text-slate-400">
-            © 2026 ShipFast Inc. Built for builders.
-          </div>
+          <span className="text-[10px] tracking-widest uppercase font-bold text-slate-400">
+            © {new Date().getFullYear()} <span className="text-black">Auxlo</span> XYZ
+          </span>
         </div>
       </div>
     </footer>
