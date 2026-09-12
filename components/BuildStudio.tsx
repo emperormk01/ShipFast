@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { PlannerResponse, PlanPhase, Project, GitHubSkill } from '../types';
 import { COMPONENTS } from './ComponentRegistry';
 import { me, logout, listProjects, createProject, updateProject, getSkills } from '../lib/api';
+import ShipFastLogo from './ShipFastLogo';
 
 interface BuildStudioProps {
   initialTab?: 'architect' | 'library' | 'handoff';
@@ -317,7 +318,7 @@ const BuildStudio: React.FC<BuildStudioProps> = ({ initialTab = 'architect', onE
       <aside className={`fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 flex flex-col z-[70] transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={onExit}>
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center shadow-lg"><svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></div>
+            <ShipFastLogo className="w-8 h-8 rounded-lg shadow-lg" />
             <span className="font-bold text-black tracking-tight">Studio</span>
           </div>
           <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-black transition-colors"><svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>

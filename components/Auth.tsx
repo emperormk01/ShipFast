@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { signup, login } from '../lib/api';
+import ShipFastLogo from './ShipFastLogo';
 
 interface AuthProps {
   onBack: () => void;
@@ -45,11 +46,7 @@ const Auth: React.FC<AuthProps> = ({ onBack, onSuccess }) => {
           onClick={onBack}
           className="inline-flex justify-center mb-10 cursor-pointer group transition-transform hover:scale-105"
         >
-          <div className="w-16 h-16 bg-black rounded-[1.5rem] flex items-center justify-center shadow-2xl shadow-slate-200">
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
+          <ShipFastLogo className="w-16 h-16 rounded-[1.5rem] shadow-2xl shadow-slate-200" />
         </div>
 
         <h2 className="text-4xl font-extrabold text-black tracking-tight mb-4">
